@@ -157,6 +157,9 @@ definition decode_frame_invocation :: "'z::state_ext arch_decoder" where
      then decode_fr_inv_flush label args cte cap extra_caps
      else throwError IllegalOperation"
 
+definition ppn_from_pptr :: "obj_ref \<Rightarrow> ppn" where
+  "ppn_from_pptr p = ucast (addrFromPPtr p >> pageBits)"
+
 definition decode_pt_inv_map :: "'z::state_ext arch_decoder" where
   "decode_pt_inv_map label args cte cap extra_caps \<equiv> case cap of
      PageTableCap p t mapped_address \<Rightarrow>
@@ -174,7 +177,7 @@ definition decode_pt_inv_map :: "'z::state_ext arch_decoder" where
            (level, slot) \<leftarrow> liftE $ gets_the $ pt_lookup_slot pt vaddr \<circ> ptes_of;
            old_pte \<leftarrow> liftE $ get_pte (level_type level) slot;
            whenE (pt_bits_left level = pageBits \<or> old_pte \<noteq> InvalidPTE) $ throwError DeleteFirst;
-           pte \<leftarrow> returnOk $ PageTablePTE (addrFromPPtr p);
+           pte \<leftarrow> returnOk $ PageTablePTE (ppn_from_pptr p);
            cap' <- returnOk $ PageTableCap p t $ Some (asid, vaddr && ~~mask (pt_bits_left level));
            returnOk $ InvokePageTable $ PageTableMap cap' cte pte slot level
          odE
